@@ -1,14 +1,30 @@
-#install.packages("mice")
-#library(mice)
-#library(caret)
+install.packages("doParallel")
+library(doParallel)
+install.packages("caret")
+library(caret)
+install.packages("RANN")
+library(RANN)
 
 #=========================================================================================================================================
+
+# MULTICORE PROCESSING
+
+# register cores
+cores <- detectCores() - 1
+cl <- makeCluster(cores)
+registerDoParallel(cl)
+
+#=========================================================================================================================================
+
+# IMPORT DATA
 
 # import data
-#Xy_train = read.csv("../../../kaggle_data/customer_retention/midterm_train.csv", stringsAsFactors = FALSE)
-#X_test = read.csv("../../../kaggle_data/customer_retention/midterm_test.csv", stringsAsFactors = FALSE)
+Xy_train = read.csv("../../../../kaggle_data/customer_retention/midterm_train.csv", stringsAsFactors = FALSE)
+X_test = read.csv("../../../../kaggle_data/customer_retention/midterm_test.csv", stringsAsFactors = FALSE)
 
 #=========================================================================================================================================
+
+# CLEAN DATA
 
 # bind data frames
 Xy_test <- X_test
@@ -108,8 +124,6 @@ Xy_combined$x44 <- sapply(Xy_combined$x44, parseMoneyToFloat)
 parsePercentToFloat <- function(x) { as.double(sub("%", "", x)) / 100.00 }
 Xy_combined$x09 <- sapply(Xy_combined$x09, parsePercentToFloat)
 
-#=========================================================================================================================================
-
 # split data into numeric and categorical
 Xy_combined <- subset(Xy_combined, select = -c(x19, x43, x16))
 Xy_combined_categorical <- subset(Xy_combined, select = c(temp, season, month, quarter, weekday, region))
@@ -123,47 +137,53 @@ Xy_combined_numeric <- subset(Xy_combined, select = -c(y, temp, season, month, q
 #summary.factor(Xy_combined_categorical$weekday)
 #summary.factor(Xy_combined_categorical$region)
 #summary(Xy_combined_numeric)
-# 'season' seems to be a natural joint to cleave the month feature
+# 'season' seems to be a natural joint at which to cleave the month feature
 
 # drop temp, quarter, and month features
 Xy_combined <- subset(Xy_combined, select = -c(temp, month, quarter))
-Xy_combined_categorical <- subset(Xy_combined, select = -c(temp, month, quarter))
-
-# get percent of missing values for each feature (excluding y)
-#missingPattern <- md.pattern(subset(Xy_combined, select = -c(y)))
-# data appears to be missing at random (MAR) - safe to impute values
 
 # separate X and y data
 X_combined <- subset(Xy_combined, select = -c(y))
 y_combined <- subset(Xy_combined, select = c(y))
+X <- X_combined
+y <- y_combined
 
 # verify all features are numeric or factor
-#str(X_combined)
+#str(X)
 
 #=========================================================================================================================================
 
-# impute missing values using defaults
-X_combined_imputed = mice(X_combined, seed=42)
+# PREPROCESS DATA
 
-X_combined_imputed
-X_combined_completed <- complete(X_combined_imputed)
-X_combined_imputed1 <- sapply(X_combined_completed, function(x) sum(is.na(x)))
-X_combined_imputed1
-X_combined_pooled <- pool(X_combined_completed)
+# get dummy variables
+dummies <- dummyVars(" ~ .", data = X)
+X <- data.frame(predict(dummies, newdata = X))
+X <- subset(X, select = -c(region., weekday., season.))
+
+# preprocess
+X_pp <- preProcess(X, verbose=TRUE, method = c("center", "scale", "YeoJohnson", "knnImpute", "pca", "nzv", "zv"))
+X_preprocessed <- predict(X_pp, newdata = X)
+
+# test-train split
+X_train <- X_preprocessed[1:160000,]
+y_labels <- y[1:160000,]
+y_labels <- ifelse(y_labels==1,'yes','no')
+y_labels <- as.factor(y_labels)
+X_test <- X_preprocessed[160001:200000,]
+
+#=========================================================================================================================================
+
+# TUNE & RUN MODEL
+
+fitControl <- trainControl(method = "repeatedcv", number = 10, repeats = 10, returnResamp = "all", classProbs = TRUE, summaryFunction = twoClassSummary, verboseIter = TRUE, allowParallel = TRUE)
+
+xgbModel <- train(x = X_train, y = y_labels, method = "xgbTree", trControl = fitControl, tuneLength = 5, metric = "ROC")
+
+plot(xgbModel, metric='ROC')
+y_pred <- predict(xgbModel, newdata = X_test, type = "prob")
+y_pred_numeric <- as.numeric(ifelse(y_labels=='yes', 1, 0))
+write.csv(y_pred, "y_pred.csv")
+print("DONE")
 
 
 
-X_numeric <- subset(Xy_combined, select = -c(y, region, weekday, season))
-X_numeric_complete_cases <- X_numeric[complete.cases(X_numeric),]
-X_numeric_complete_cases
-correlations <- cor(X_numeric_complete_cases)
-correlations
-
-
-
-nzv <- nearZeroVar(X_numeric_complete_cases)
-nzv
-filteredDescr <- X_numeric_complete_cases[, -nzv]
-dim(filteredDescr)
-highlyCorDescr <- findCorrelation(correlations, cutoff = .75)
-highlyCorDescr
