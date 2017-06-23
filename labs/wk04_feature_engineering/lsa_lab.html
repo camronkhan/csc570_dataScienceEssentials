@@ -1,0 +1,667 @@
+
+<div class="cell border-box-sizing text_cell rendered">
+<div class="prompt input_prompt">
+</div>
+<div class="inner_cell">
+<div class="text_cell_render border-box-sizing rendered_html">
+<h3 id="Import-Dependencies">Import Dependencies<a class="anchor-link" href="#Import-Dependencies">&#182;</a></h3>
+</div>
+</div>
+</div>
+<div class="cell border-box-sizing code_cell rendered">
+<div class="input">
+<div class="prompt input_prompt">In&nbsp;[377]:</div>
+<div class="inner_cell">
+    <div class="input_area">
+<div class=" highlight hl-ipython3"><pre><span></span><span class="kn">from</span> <span class="nn">bs4</span> <span class="k">import</span> <span class="n">BeautifulSoup</span>
+<span class="kn">import</span> <span class="nn">nltk</span>
+<span class="kn">from</span> <span class="nn">nltk.corpus</span> <span class="k">import</span> <span class="n">stopwords</span>
+<span class="kn">from</span> <span class="nn">sklearn.feature_extraction.text</span> <span class="k">import</span> <span class="n">TfidfVectorizer</span>
+<span class="kn">from</span> <span class="nn">sklearn.decomposition</span> <span class="k">import</span> <span class="n">TruncatedSVD</span>
+</pre></div>
+
+</div>
+</div>
+</div>
+
+</div>
+<div class="cell border-box-sizing code_cell rendered">
+<div class="input">
+<div class="prompt input_prompt">In&nbsp;[378]:</div>
+<div class="inner_cell">
+    <div class="input_area">
+<div class=" highlight hl-ipython3"><pre><span></span><span class="n">nltk</span><span class="o">.</span><span class="n">download</span><span class="p">(</span><span class="s1">&#39;stopwords&#39;</span><span class="p">)</span>
+</pre></div>
+
+</div>
+</div>
+</div>
+
+<div class="output_wrapper">
+<div class="output">
+
+
+<div class="output_area"><div class="prompt"></div>
+<div class="output_subarea output_stream output_stdout output_text">
+<pre>[nltk_data] Downloading package stopwords to
+[nltk_data]     C:\Users\camro\AppData\Roaming\nltk_data...
+[nltk_data]   Package stopwords is already up-to-date!
+</pre>
+</div>
+</div>
+
+<div class="output_area"><div class="prompt output_prompt">Out[378]:</div>
+
+
+<div class="output_text output_subarea output_execute_result">
+<pre>True</pre>
+</div>
+
+</div>
+
+</div>
+</div>
+
+</div>
+<div class="cell border-box-sizing text_cell rendered">
+<div class="prompt input_prompt">
+</div>
+<div class="inner_cell">
+<div class="text_cell_render border-box-sizing rendered_html">
+<h3 id="Import-Data">Import Data<a class="anchor-link" href="#Import-Data">&#182;</a></h3>
+</div>
+</div>
+</div>
+<div class="cell border-box-sizing code_cell rendered">
+<div class="input">
+<div class="prompt input_prompt">In&nbsp;[379]:</div>
+<div class="inner_cell">
+    <div class="input_area">
+<div class=" highlight hl-ipython3"><pre><span></span><span class="kn">from</span> <span class="nn">sklearn.datasets</span> <span class="k">import</span> <span class="n">fetch_20newsgroups</span>
+<span class="n">categories</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;talk.politics.mideast&#39;</span><span class="p">]</span>
+<span class="n">dataset</span> <span class="o">=</span> <span class="n">fetch_20newsgroups</span><span class="p">(</span><span class="n">subset</span><span class="o">=</span><span class="s1">&#39;all&#39;</span><span class="p">,</span> <span class="n">shuffle</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">random_state</span><span class="o">=</span><span class="mi">42</span><span class="p">,</span> <span class="n">categories</span><span class="o">=</span><span class="n">categories</span><span class="p">)</span>
+<span class="n">corpus</span> <span class="o">=</span> <span class="n">dataset</span><span class="o">.</span><span class="n">data</span>
+</pre></div>
+
+</div>
+</div>
+</div>
+
+</div>
+<div class="cell border-box-sizing text_cell rendered">
+<div class="prompt input_prompt">
+</div>
+<div class="inner_cell">
+<div class="text_cell_render border-box-sizing rendered_html">
+<h3 id="Define-Stopwords">Define Stopwords<a class="anchor-link" href="#Define-Stopwords">&#182;</a></h3>
+</div>
+</div>
+</div>
+<div class="cell border-box-sizing code_cell rendered">
+<div class="input">
+<div class="prompt input_prompt">In&nbsp;[380]:</div>
+<div class="inner_cell">
+    <div class="input_area">
+<div class=" highlight hl-ipython3"><pre><span></span><span class="n">stopset</span> <span class="o">=</span> <span class="nb">set</span><span class="p">(</span><span class="n">stopwords</span><span class="o">.</span><span class="n">words</span><span class="p">(</span><span class="s1">&#39;english&#39;</span><span class="p">))</span>
+<span class="n">stopset</span><span class="o">.</span><span class="n">update</span><span class="p">([</span><span class="s1">&#39;From&#39;</span><span class="p">,</span> <span class="s1">&#39;Subject&#39;</span><span class="p">,</span> <span class="s1">&#39;Re&#39;</span><span class="p">,</span> <span class="s1">&#39;Lines&#39;</span><span class="p">,</span> <span class="s1">&#39;In-reply-to&#39;</span><span class="p">,</span> <span class="s1">&#39;Organization&#39;</span><span class="p">,</span> <span class="s1">&#39;NNTP-Posting-Host&#39;</span><span class="p">,</span> <span class="s1">&#39;</span><span class="se">\n</span><span class="s1">&#39;</span><span class="p">,</span> <span class="s1">&#39;GMT&#39;</span><span class="p">,</span> <span class="s1">&#39;writes&#39;</span><span class="p">,</span> <span class="s1">&#39;wrote&#39;</span><span class="p">,</span> <span class="s1">&#39;edu&#39;</span><span class="p">,</span> <span class="s1">&#39;com&#39;</span><span class="p">,</span> <span class="s1">&#39;ed&#39;</span><span class="p">,</span> <span class="s1">&#39;professor&#39;</span><span class="p">,</span> <span class="s1">&#39;00&#39;</span><span class="p">,</span> <span class="s1">&#39;150&#39;</span><span class="p">,</span> <span class="s1">&#39;bony&#39;</span><span class="p">,</span> <span class="s1">&#39;000&#39;</span><span class="p">,</span> <span class="s1">&#39;also&#39;</span><span class="p">,</span> <span class="s1">&#39;said&#39;</span><span class="p">,</span> <span class="s1">&#39;university&#39;</span><span class="p">,</span> <span class="s1">&#39;history&#39;</span><span class="p">,</span> <span class="s1">&#39;cs&#39;</span><span class="p">,</span> <span class="s1">&#39;bony1&#39;</span><span class="p">,</span> <span class="s1">&#39;like&#39;</span><span class="p">,</span> <span class="s1">&#39;org&#39;</span><span class="p">,</span> <span class="s1">&#39;could&#39;</span><span class="p">,</span> <span class="s1">&#39;would&#39;</span><span class="p">,</span> <span class="s1">&#39;say&#39;</span><span class="p">,</span> <span class="s1">&#39;nntp&#39;</span><span class="p">,</span> <span class="s1">&#39;posting&#39;</span><span class="p">,</span> <span class="s1">&#39;host&#39;</span><span class="p">,</span> <span class="s1">&#39;might&#39;</span><span class="p">,</span> <span class="s1">&#39;subject&#39;</span><span class="p">,</span> <span class="s1">&#39;uucp&#39;</span><span class="p">,</span> <span class="s1">&#39;organization&#39;</span><span class="p">,</span> <span class="s1">&#39;&gt;&#39;</span><span class="p">,</span> <span class="s1">&#39;000246&#39;</span><span class="p">,</span> <span class="s1">&#39;0000&#39;</span><span class="p">,</span> <span class="s1">&#39;11186&#39;</span><span class="p">,</span> <span class="s1">&#39;000413&#39;</span><span class="p">,</span> <span class="s1">&#39;25123&#39;</span><span class="p">,</span> <span class="s1">&#39;reply&#39;</span><span class="p">,</span> <span class="s1">&#39;00081100&#39;</span><span class="p">,</span> <span class="s1">&#39;ysub&#39;</span><span class="p">,</span> <span class="s1">&#39;ysu&#39;</span><span class="p">,</span> <span class="s1">&#39;000th&#39;</span><span class="p">,</span> <span class="s1">&#39;0006&#39;</span><span class="p">,</span> <span class="s1">&#39;003336&#39;</span><span class="p">,</span> <span class="s1">&#39;10198&#39;</span><span class="p">,</span> <span class="s1">&#39;002811&#39;</span><span class="p">,</span> <span class="s1">&#39;22496&#39;</span><span class="p">,</span> <span class="s1">&#39;002118&#39;</span><span class="p">,</span> <span class="s1">&#39;24102&#39;</span><span class="p">])</span>
+</pre></div>
+
+</div>
+</div>
+</div>
+
+</div>
+<div class="cell border-box-sizing text_cell rendered">
+<div class="prompt input_prompt">
+</div>
+<div class="inner_cell">
+<div class="text_cell_render border-box-sizing rendered_html">
+<h3 id="TF-IDF-Vectorizing">TF-IDF Vectorizing<a class="anchor-link" href="#TF-IDF-Vectorizing">&#182;</a></h3>
+</div>
+</div>
+</div>
+<div class="cell border-box-sizing code_cell rendered">
+<div class="input">
+<div class="prompt input_prompt">In&nbsp;[381]:</div>
+<div class="inner_cell">
+    <div class="input_area">
+<div class=" highlight hl-ipython3"><pre><span></span><span class="c1"># Example document before metadata removal and vectorizing</span>
+<span class="n">corpus</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+</pre></div>
+
+</div>
+</div>
+</div>
+
+<div class="output_wrapper">
+<div class="output">
+
+
+<div class="output_area"><div class="prompt output_prompt">Out[381]:</div>
+
+
+<div class="output_text output_subarea output_execute_result">
+<pre>&#39;From: amoss@shuldig.cs.huji.ac.il (Amos Shapira)\nSubject: Re: Final Solution in Palestine ?\nOrganization: Inst. of Comp. Sci., Hebrew University, Jerusalem, Israel\nLines: 30\nNNTP-Posting-Host: shuldig.cs.huji.ac.il\nIn-reply-to: ahmeda@McRCIM.McGill.EDU\&#39;s message of Sun, 25 Apr 93 17:10:03 GMT\n\nahmeda@McRCIM.McGill.EDU (Ahmed Abu-Abed) writes:\n\n|What Hamas and Islamic Jihad believe in, as far as I can get from the Arab\n|media,\n|is an Islamic state that protects the rights of all its inhabitants under\n|Koranic\n|Law. This would be a reversal of the 1948 situation in which the Jews in\n|Palestine took control of the land and its (mostly Muslim) inhabitants.\n\nThe borders of the Jewish state as drawn by the U.N. included the areas which\ncontained mostly Jews,  that\&#39;s what the surveys and the numerous commitees\nwhere after when they visited here.\n\n|However, whoever committed crimes against humanity (torture, blowing up their\n|homes, murders,...) must be treated and tried as a war criminal. The political\n|thought of these movements shows that a freedom of choice will be given to the\n|Jews in living under the new law or leaving to the destintion of their choice.\n\nI never touched an Arab during my army service and never voted for anyone more\nright than the Green party.  Will I be spared by these &#34;humanist standards&#34;?\n(or will anyone stop to consider this before sloughtering me?)\n\nI doubt it.  And not only because of the past record of murdering helpless\nwomen and children since the turn of the century up to these days.\n\n--\n--Amos Shapira (Jumper Extraordinaire) |  &#34;It is true that power corrupts,\nC.S. System Group, Hebrew University,  |   but absolute power is better!&#34;\nJerusalem 91904, ISRAEL                |\namoss@cs.huji.ac.il                    |          -- the Demon to his son\n&#39;</pre>
+</div>
+
+</div>
+
+</div>
+</div>
+
+</div>
+<div class="cell border-box-sizing code_cell rendered">
+<div class="input">
+<div class="prompt input_prompt">In&nbsp;[382]:</div>
+<div class="inner_cell">
+    <div class="input_area">
+<div class=" highlight hl-ipython3"><pre><span></span><span class="c1"># Remove metadata by locating the index of the last instance of &#39;writes:&#39; and slicing from the beginning of the doc to this index</span>
+<span class="n">corpusWithoutMetadata</span> <span class="o">=</span> <span class="p">[]</span>
+<span class="n">target</span> <span class="o">=</span> <span class="s1">&#39;writes:&#39;</span>
+<span class="k">for</span> <span class="n">doc</span> <span class="ow">in</span> <span class="n">corpus</span><span class="p">:</span>
+    <span class="n">targetIdx</span> <span class="o">=</span> <span class="n">doc</span><span class="o">.</span><span class="n">rfind</span><span class="p">(</span><span class="n">target</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">targetIdx</span> <span class="o">&gt;=</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="n">corpusWithoutMetadata</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">doc</span><span class="p">[</span><span class="n">targetIdx</span> <span class="o">+</span> <span class="mi">7</span><span class="p">:])</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">corpusWithoutMetadata</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">doc</span><span class="p">)</span>
+</pre></div>
+
+</div>
+</div>
+</div>
+
+</div>
+<div class="cell border-box-sizing code_cell rendered">
+<div class="input">
+<div class="prompt input_prompt">In&nbsp;[383]:</div>
+<div class="inner_cell">
+    <div class="input_area">
+<div class=" highlight hl-ipython3"><pre><span></span><span class="c1"># Example document after metadata removal</span>
+<span class="n">corpusWithoutMetadata</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+</pre></div>
+
+</div>
+</div>
+</div>
+
+<div class="output_wrapper">
+<div class="output">
+
+
+<div class="output_area"><div class="prompt output_prompt">Out[383]:</div>
+
+
+<div class="output_text output_subarea output_execute_result">
+<pre>&#39;\n\n|What Hamas and Islamic Jihad believe in, as far as I can get from the Arab\n|media,\n|is an Islamic state that protects the rights of all its inhabitants under\n|Koranic\n|Law. This would be a reversal of the 1948 situation in which the Jews in\n|Palestine took control of the land and its (mostly Muslim) inhabitants.\n\nThe borders of the Jewish state as drawn by the U.N. included the areas which\ncontained mostly Jews,  that\&#39;s what the surveys and the numerous commitees\nwhere after when they visited here.\n\n|However, whoever committed crimes against humanity (torture, blowing up their\n|homes, murders,...) must be treated and tried as a war criminal. The political\n|thought of these movements shows that a freedom of choice will be given to the\n|Jews in living under the new law or leaving to the destintion of their choice.\n\nI never touched an Arab during my army service and never voted for anyone more\nright than the Green party.  Will I be spared by these &#34;humanist standards&#34;?\n(or will anyone stop to consider this before sloughtering me?)\n\nI doubt it.  And not only because of the past record of murdering helpless\nwomen and children since the turn of the century up to these days.\n\n--\n--Amos Shapira (Jumper Extraordinaire) |  &#34;It is true that power corrupts,\nC.S. System Group, Hebrew University,  |   but absolute power is better!&#34;\nJerusalem 91904, ISRAEL                |\namoss@cs.huji.ac.il                    |          -- the Demon to his son\n&#39;</pre>
+</div>
+
+</div>
+
+</div>
+</div>
+
+</div>
+<div class="cell border-box-sizing code_cell rendered">
+<div class="input">
+<div class="prompt input_prompt">In&nbsp;[384]:</div>
+<div class="inner_cell">
+    <div class="input_area">
+<div class=" highlight hl-ipython3"><pre><span></span><span class="c1"># Initialize vectorizer</span>
+<span class="n">vectorizer</span> <span class="o">=</span> <span class="n">TfidfVectorizer</span><span class="p">(</span><span class="n">stop_words</span><span class="o">=</span><span class="n">stopset</span><span class="p">,</span> <span class="n">use_idf</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">ngram_range</span><span class="o">=</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span><span class="mi">3</span><span class="p">))</span>
+</pre></div>
+
+</div>
+</div>
+</div>
+
+</div>
+<div class="cell border-box-sizing code_cell rendered">
+<div class="input">
+<div class="prompt input_prompt">In&nbsp;[385]:</div>
+<div class="inner_cell">
+    <div class="input_area">
+<div class=" highlight hl-ipython3"><pre><span></span><span class="c1"># Populate maxtrix</span>
+<span class="n">X</span> <span class="o">=</span> <span class="n">vectorizer</span><span class="o">.</span><span class="n">fit_transform</span><span class="p">(</span><span class="n">corpus</span><span class="p">)</span>
+</pre></div>
+
+</div>
+</div>
+</div>
+
+</div>
+<div class="cell border-box-sizing code_cell rendered">
+<div class="input">
+<div class="prompt input_prompt">In&nbsp;[386]:</div>
+<div class="inner_cell">
+    <div class="input_area">
+<div class=" highlight hl-ipython3"><pre><span></span><span class="c1"># Transformed document after TF-IDF</span>
+<span class="n">X</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+</pre></div>
+
+</div>
+</div>
+</div>
+
+<div class="output_wrapper">
+<div class="output">
+
+
+<div class="output_area"><div class="prompt output_prompt">Out[386]:</div>
+
+
+<div class="output_text output_subarea output_execute_result">
+<pre>&lt;1x319861 sparse matrix of type &#39;&lt;class &#39;numpy.float64&#39;&gt;&#39;
+	with 430 stored elements in Compressed Sparse Row format&gt;</pre>
+</div>
+
+</div>
+
+</div>
+</div>
+
+</div>
+<div class="cell border-box-sizing code_cell rendered">
+<div class="input">
+<div class="prompt input_prompt">In&nbsp;[387]:</div>
+<div class="inner_cell">
+    <div class="input_area">
+<div class=" highlight hl-ipython3"><pre><span></span><span class="c1"># Display term index and associated TF-IDF score</span>
+<span class="c1"># Only terms with a TF-IDF score &gt; 0 are stored</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">X</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+</pre></div>
+
+</div>
+</div>
+</div>
+
+<div class="output_wrapper">
+<div class="output">
+
+
+<div class="output_area"><div class="prompt"></div>
+<div class="output_subarea output_stream output_stdout output_text">
+<pre>  (0, 142193)	0.0440712732703
+  (0, 14116)	0.0440712732703
+  (0, 23494)	0.0440712732703
+  (0, 151018)	0.0440712732703
+  (0, 12415)	0.0440712732703
+  (0, 154736)	0.0440712732703
+  (0, 47349)	0.0440712732703
+  (0, 224150)	0.0440712732703
+  (0, 13856)	0.0440712732703
+  (0, 134580)	0.0440712732703
+  (0, 128766)	0.0440712732703
+  (0, 278513)	0.0440712732703
+  (0, 75117)	0.0440712732703
+  (0, 224168)	0.0440712732703
+  (0, 293000)	0.0440712732703
+  (0, 106080)	0.0440712732703
+  (0, 158111)	0.0440712732703
+  (0, 258153)	0.043171256467
+  (0, 23487)	0.043171256467
+  (0, 81516)	0.0546643795893
+  (0, 60547)	0.0546643795893
+  (0, 295827)	0.0546643795893
+  (0, 261839)	0.0546643795893
+  (0, 62669)	0.0546643795893
+  (0, 313512)	0.0546643795893
+  :	:
+  (0, 27797)	0.0263815801851
+  (0, 8065)	0.0262878205919
+  (0, 276382)	0.039795075007
+  (0, 185207)	0.0261036837065
+  (0, 182718)	0.0592453951354
+  (0, 182839)	0.0643300113931
+  (0, 19621)	0.0847323280043
+  (0, 8965)	0.0254085400591
+  (0, 171836)	0.00769018946554
+  (0, 150919)	0.0291003092985
+  (0, 154728)	0.0529530090471
+  (0, 134576)	0.0674415372563
+  (0, 251544)	0.039795075007
+  (0, 69727)	0.039795075007
+  (0, 146555)	0.0440712732703
+  (0, 210709)	0.0506518609745
+  (0, 264879)	0.0279464779785
+  (0, 111393)	0.0273884702127
+  (0, 258137)	0.0807227141362
+  (0, 23474)	0.0807227141362
+  (0, 142162)	0.0931342888798
+  (0, 14094)	0.0971063581972
+  (0, 139673)	0.104329254978
+  (0, 260131)	0.0807227141362
+  (0, 23488)	0.0807227141362
+</pre>
+</div>
+</div>
+
+</div>
+</div>
+
+</div>
+<div class="cell border-box-sizing text_cell rendered">
+<div class="prompt input_prompt">
+</div>
+<div class="inner_cell">
+<div class="text_cell_render border-box-sizing rendered_html">
+<h3 id="Latent-Semantic-Analysis">Latent Semantic Analysis<a class="anchor-link" href="#Latent-Semantic-Analysis">&#182;</a></h3><p>Matrix Decomponsition:</p>
+$$X \approx USV^{T}$$<p><strong>X</strong>: m x n matrix, where m = # documents, n = # terms, k = # concepts</p>
+<p><strong>U</strong>: m x k matrix, where row (m) = documents and col (k) = concepts</p>
+<p><strong>S</strong>: k x k diagonal matix, which shows amt of variation captured from each concept</p>
+<p><strong>V</strong>: n x k matrix, where row (n) = terms and col (k) = concepts</p>
+
+</div>
+</div>
+</div>
+<div class="cell border-box-sizing code_cell rendered">
+<div class="input">
+<div class="prompt input_prompt">In&nbsp;[388]:</div>
+<div class="inner_cell">
+    <div class="input_area">
+<div class=" highlight hl-ipython3"><pre><span></span><span class="c1"># Number of documents by number of terms</span>
+<span class="c1"># Term count includes bigrams and trigrams in addition to singular terms</span>
+<span class="n">X</span><span class="o">.</span><span class="n">shape</span>
+</pre></div>
+
+</div>
+</div>
+</div>
+
+<div class="output_wrapper">
+<div class="output">
+
+
+<div class="output_area"><div class="prompt output_prompt">Out[388]:</div>
+
+
+<div class="output_text output_subarea output_execute_result">
+<pre>(940, 319861)</pre>
+</div>
+
+</div>
+
+</div>
+</div>
+
+</div>
+<div class="cell border-box-sizing code_cell rendered">
+<div class="input">
+<div class="prompt input_prompt">In&nbsp;[389]:</div>
+<div class="inner_cell">
+    <div class="input_area">
+<div class=" highlight hl-ipython3"><pre><span></span><span class="c1"># Instantiate an instance of TruncatedSVD</span>
+<span class="c1"># TruncatedSVD is engine used to perform matrix decomposition</span>
+<span class="n">lsa</span> <span class="o">=</span> <span class="n">TruncatedSVD</span><span class="p">(</span><span class="n">n_components</span><span class="o">=</span><span class="mi">12</span><span class="p">,</span> <span class="n">n_iter</span><span class="o">=</span><span class="mi">100</span><span class="p">,</span> <span class="n">random_state</span><span class="o">=</span><span class="mi">333</span><span class="p">)</span>
+</pre></div>
+
+</div>
+</div>
+</div>
+
+</div>
+<div class="cell border-box-sizing code_cell rendered">
+<div class="input">
+<div class="prompt input_prompt">In&nbsp;[390]:</div>
+<div class="inner_cell">
+    <div class="input_area">
+<div class=" highlight hl-ipython3"><pre><span></span><span class="c1"># Decompose maxtrix X into matrices U, S, and V</span>
+<span class="n">lsa</span><span class="o">.</span><span class="n">fit</span><span class="p">(</span><span class="n">X</span><span class="p">)</span>
+</pre></div>
+
+</div>
+</div>
+</div>
+
+<div class="output_wrapper">
+<div class="output">
+
+
+<div class="output_area"><div class="prompt output_prompt">Out[390]:</div>
+
+
+<div class="output_text output_subarea output_execute_result">
+<pre>TruncatedSVD(algorithm=&#39;randomized&#39;, n_components=12, n_iter=100,
+       random_state=333, tol=0.0)</pre>
+</div>
+
+</div>
+
+</div>
+</div>
+
+</div>
+<div class="cell border-box-sizing code_cell rendered">
+<div class="input">
+<div class="prompt input_prompt">In&nbsp;[391]:</div>
+<div class="inner_cell">
+    <div class="input_area">
+<div class=" highlight hl-ipython3"><pre><span></span><span class="c1"># First row of V</span>
+<span class="c1"># V(row) = term, V(col) = concept</span>
+<span class="c1"># Each value represents the importance of the term to the concept</span>
+<span class="n">lsa</span><span class="o">.</span><span class="n">components_</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+</pre></div>
+
+</div>
+</div>
+</div>
+
+<div class="output_wrapper">
+<div class="output">
+
+
+<div class="output_area"><div class="prompt output_prompt">Out[391]:</div>
+
+
+<div class="output_text output_subarea output_execute_result">
+<pre>array([ 0.00024147,  0.00024147,  0.00024147, ...,  0.00134017,
+        0.00134017,  0.00134017])</pre>
+</div>
+
+</div>
+
+</div>
+</div>
+
+</div>
+<div class="cell border-box-sizing code_cell rendered">
+<div class="input">
+<div class="prompt input_prompt">In&nbsp;[392]:</div>
+<div class="inner_cell">
+    <div class="input_area">
+<div class=" highlight hl-ipython3"><pre><span></span><span class="c1"># For each concept return the top 12 most significant terms sorted by significance in descending order</span>
+<span class="n">terms</span> <span class="o">=</span> <span class="n">vectorizer</span><span class="o">.</span><span class="n">get_feature_names</span><span class="p">()</span>
+<span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">comp</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">lsa</span><span class="o">.</span><span class="n">components_</span><span class="p">):</span> 
+    <span class="n">termsInComp</span> <span class="o">=</span> <span class="nb">zip</span> <span class="p">(</span><span class="n">terms</span><span class="p">,</span><span class="n">comp</span><span class="p">)</span>
+    <span class="n">sortedTerms</span> <span class="o">=</span> <span class="nb">sorted</span><span class="p">(</span><span class="n">termsInComp</span><span class="p">,</span> <span class="n">key</span><span class="o">=</span><span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="n">x</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="n">reverse</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span> <span class="p">[:</span><span class="mi">12</span><span class="p">]</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Concept </span><span class="si">%d</span><span class="s2">:&quot;</span> <span class="o">%</span> <span class="n">i</span> <span class="p">)</span>
+    <span class="k">for</span> <span class="n">term</span> <span class="ow">in</span> <span class="n">sortedTerms</span><span class="p">:</span>
+        <span class="nb">print</span><span class="p">(</span><span class="n">term</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+    <span class="nb">print</span> <span class="p">(</span><span class="s2">&quot; &quot;</span><span class="p">)</span>
+</pre></div>
+
+</div>
+</div>
+</div>
+
+<div class="output_wrapper">
+<div class="output">
+
+
+<div class="output_area"><div class="prompt"></div>
+<div class="output_subarea output_stream output_stdout output_text">
+<pre>Concept 0:
+armenian
+armenians
+turkish
+israel
+people
+jews
+israeli
+serdar
+armenia
+one
+argic
+serdar argic
+ 
+Concept 1:
+armenian
+turkish
+istanbul
+005225
+turkey
+many
+ankara
+genocide
+new
+russian
+soviet armenia
+people
+ 
+Concept 2:
+istanbul
+ankara
+osmanli
+ermeni
+foreign office
+new york
+office
+york
+mecmuasi
+nezareti
+umumiye
+1983
+ 
+Concept 3:
+russian
+armenians
+genocide
+world
+government
+ottoman
+van
+israel
+fo
+war
+jews
+state
+ 
+Concept 4:
+government
+hojali
+serdar
+azerbaijan
+israel
+dead
+jews
+turkish
+genocide
+soviet armenia
+new
+azeri
+ 
+Concept 5:
+turkish
+tartar
+first
+government
+paragraph
+turkey
+zuma
+005019 10716 midway
+greek
+even
+rights
+sdpa
+ 
+Concept 6:
+israeli
+world
+005019 10716
+tartars
+know
+armenians
+home
+one
+tartar
+today
+think
+israel
+ 
+Concept 7:
+005225
+first
+israeli
+yalanci
+paragraph
+hojali
+fact
+dead
+005019 10716 midway
+even
+turkey
+armenia
+ 
+Concept 8:
+one
+005225 8231
+turkish
+article
+jews
+war
+armenia
+ottoman
+jews latvia
+latvia
+armenian
+russian
+ 
+Concept 9:
+israel
+jews
+soviet
+armenian
+004917 3047 news
+005225
+genocide
+today
+005019
+government
+muslim
+dead
+ 
+Concept 10:
+turkish
+armenian
+genocide
+well
+many
+004917 3047
+world
+today
+things
+israeli
+turkey
+killed
+ 
+Concept 11:
+war
+armenian
+right
+one
+many
+today
+constitution
+center
+well
+new
+serdar argic
+muslims
+ 
+</pre>
+</div>
+</div>
+
+</div>
+</div>
+
+</div>
